@@ -8,13 +8,19 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var lastCheckIn: Date?
+    
+    @AppStorage("lastCheckIn") private var lastCheckInTimestamp: Double = 0
+    
+   private var lastCheckIn: Date? {
+        lastCheckInTimestamp == 0 ? nil : Date(timeIntervalSince1970: lastCheckInTimestamp )
+    }
+    
     var body: some View {
         VStack(spacing: 24){
             Text("Daily Check")
                 .font(.largeTitle.bold())
             Button{
-                lastCheckIn = Date()
+                lastCheckInTimestamp = Date().timeIntervalSince1970
             }label: {
                 Text("I'm okay")
                     .font(.title2.bold())
