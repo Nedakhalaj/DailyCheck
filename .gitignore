@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Xcode user files (your window layout, breakpoints)
+xcuserdata/
+*.xcuserstate
+
+# Build output
+build/
+DerivedData/
+
+# Swift Package Manager
+.build/
