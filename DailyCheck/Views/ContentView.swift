@@ -9,17 +9,8 @@ import SwiftUI
 
 struct ContentView: View {
     
-    @AppStorage("lastCheckIn") private var lastCheckInTimestamp: Double = 0
-    @AppStorage("deadlineMinutes") private var deadlineMinutes: Int = 20 * 60
+    @State private var viewModel = CheckInViewModel()
     
-    
-    private var lastCheckIn: Date? {
-        lastCheckInTimestamp == 0 ? nil : Date(timeIntervalSince1970: lastCheckInTimestamp )
-    }
-    
-    private var deadlineText: String {
-        String(format: "%02d:%02d", deadlineMinutes / 60, deadlineMinutes % 60)
-    }
     
     var body: some View {
         NavigationStack{
@@ -27,7 +18,7 @@ struct ContentView: View {
                 Text("Daily Check")
                     .font(.largeTitle.bold())
                 Button{
-                    lastCheckInTimestamp = Date().timeIntervalSince1970
+                    viewModel.checkIn()
                 }label: {
                     Text("I'm okay")
                         .font(.title2.bold())
@@ -36,33 +27,27 @@ struct ContentView: View {
                         .background(Circle().fill(.green))
                 }
                 .buttonStyle(.plain)
-                if let lastCheckIn {
+                if let lastCheckIn = viewModel.lastCheckIn {
                     Text("Last check-in: \(lastCheckIn.formatted(date: .abbreviated, time: .shortened))")
                         .foregroundStyle(.secondary)
                 }else{
                     Text("No check-in yet")
-                            .foregroundStyle(.secondary)
+                        .foregroundStyle(.secondary)
                 }
-                Text("Check in before \(deadlineText)")
+                Text("Check in before \(viewModel.deadlineText)")
                     .font(.headline)
             }
             .padding()
             .toolbar {
                 NavigationLink {
-                    SettingsView()
+                    SettingsView(viewModel: viewModel)
                 } label: {
                     Image(systemName: "gearshape")
                 }
             }
             .task {
-                await NotificationManager.requestPermission()
-                NotificationManager.scheduleDailyReminder(deadlineMinutes: deadlineMinutes)
+                await viewModel.setUp()
             }
-            .onChange(of: deadlineMinutes) {
-                NotificationManager.scheduleDailyReminder(deadlineMinutes: deadlineMinutes)
-            }
-
-            
         }
         
     }
