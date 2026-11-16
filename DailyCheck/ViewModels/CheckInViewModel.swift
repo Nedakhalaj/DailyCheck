@@ -12,12 +12,14 @@ final class CheckInViewModel {
     private(set) var lastCheckIn: Date?
     private(set) var deadlineMinutes: Int
     private let defaults = UserDefaults.standard
+    
     init() {
         let store = UserDefaults.standard
         let saved = store.double(forKey: Keys.lastCheckIn)
         lastCheckIn = saved == 0 ? nil : Date(timeIntervalSince1970: saved)
         deadlineMinutes = store.object(forKey: Keys.deadlineMinutes) as? Int ?? 20 * 60
     }
+    
     // MARK: - For the views
     // 1200 -> "20:00"
     var deadlineText: String {
@@ -32,22 +34,33 @@ final class CheckInViewModel {
             of: Date()
         ) ?? Date()
     }
+    
     // MARK: - User actions
     func checkIn() {
         let now = Date()
         lastCheckIn = now
         defaults.set(now.timeIntervalSince1970, forKey: Keys.lastCheckIn)
+        rescheduleReminders()
     }
     func updateDeadline(from date: Date) {
         let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
         deadlineMinutes = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
         defaults.set(deadlineMinutes, forKey: Keys.deadlineMinutes)
-        NotificationManager.scheduleDailyReminder(deadlineMinutes: deadlineMinutes)
+        rescheduleReminders()
     }
     func setUp() async {
         await NotificationManager.requestPermission()
-        NotificationManager.scheduleDailyReminder(deadlineMinutes: deadlineMinutes)
+        rescheduleReminders()
     }
+    
+    
+    // MARK: - Reminders
+    
+    private func rescheduleReminders() {
+        NotificationManager.scheduleReminders(deadlineMinutes: deadlineMinutes, lastCheckIn: lastCheckIn)
+    }
+    
+    
     // MARK: - Keys
     private enum Keys {
         static let lastCheckIn = "lastCheckIn"
