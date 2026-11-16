@@ -54,6 +54,14 @@ struct ContentView: View {
                     Image(systemName: "gearshape")
                 }
             }
+            .task {
+                await NotificationManager.requestPermission()
+                NotificationManager.scheduleDailyReminder(deadlineMinutes: deadlineMinutes)
+            }
+            .onChange(of: deadlineMinutes) {
+                NotificationManager.scheduleDailyReminder(deadlineMinutes: deadlineMinutes)
+            }
+
             
         }
         
