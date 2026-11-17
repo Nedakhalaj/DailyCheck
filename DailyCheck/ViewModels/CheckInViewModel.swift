@@ -42,6 +42,7 @@ final class CheckInViewModel {
         lastCheckIn = now
         defaults.set(now.timeIntervalSince1970, forKey: Keys.lastCheckIn)
         rescheduleReminders()
+        Task { await uploadCheckIn(at: now) }
     }
     func updateDeadline(from date: Date) {
         let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
@@ -61,8 +62,38 @@ final class CheckInViewModel {
         }
     }
 
-    
-    
+    // MARK: - Firestore
+
+    private func uploadCheckIn(at date: Date) async {
+        guard let userID else {
+            print("No user yet, check-in not uploaded")
+            return
+        }
+
+        do {
+            try await FirestoreService.saveCheckIn(
+                userID: userID,
+                checkIn: date,
+                nextDeadline: nextDeadline(after: date)
+            )
+            print("Check-in saved to Firestore")
+        } catch {
+            print("Saving check-in failed: \(error)")
+        }
+    }
+
+    // A check-in covers today, so the next deadline is tomorrow.
+    private func nextDeadline(after date: Date) -> Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
+        return calendar.date(
+            bySettingHour: deadlineMinutes / 60,
+            minute: deadlineMinutes % 60,
+            second: 0,
+            of: tomorrow
+        ) ?? tomorrow
+    }
+
     // MARK: - Reminders
     
     private func rescheduleReminders() {
