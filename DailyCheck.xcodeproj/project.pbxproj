@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		818B2EE730ACA08F00352253 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 818B2EE630ACA08F00352253 /* FirebaseAuth */; };
 		818B2EE930ACA09500352253 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 818B2EE830ACA09500352253 /* FirebaseFirestore */; };
+		818B2F0D30ACBDF000352253 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 818B2F0C30ACBDF000352253 /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				818B2EE730ACA08F00352253 /* FirebaseAuth in Frameworks */,
+				818B2F0D30ACBDF000352253 /* FirebaseCore in Frameworks */,
 				818B2EE930ACA09500352253 /* FirebaseFirestore in Frameworks */,
 			);
 		};
@@ -78,6 +80,7 @@
 			packageProductDependencies = (
 				818B2EE630ACA08F00352253 /* FirebaseAuth */,
 				818B2EE830ACA09500352253 /* FirebaseFirestore */,
+				818B2F0C30ACBDF000352253 /* FirebaseCore */,
 			);
 			productName = DailyCheck;
 			productReference = 81BFEF6430A736F8009F2703 /* DailyCheck.app */;
@@ -362,6 +365,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 81BFEFA330AC9A8D009F2703 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		818B2F0C30ACBDF000352253 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 81BFEFA330AC9A8D009F2703 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

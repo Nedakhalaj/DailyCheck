@@ -11,6 +11,7 @@ import Observation
 final class CheckInViewModel {
     private(set) var lastCheckIn: Date?
     private(set) var deadlineMinutes: Int
+    private(set) var userID: String?
     private let defaults = UserDefaults.standard
     
     init() {
@@ -51,7 +52,15 @@ final class CheckInViewModel {
     func setUp() async {
         await NotificationManager.requestPermission()
         rescheduleReminders()
+
+        do {
+            userID = try await AuthService.signInIfNeeded()
+            print("Signed in with uid: \(userID ?? "none")")
+        } catch {
+            print("Sign-in failed: \(error)")
+        }
     }
+
     
     
     // MARK: - Reminders
