@@ -12,13 +12,15 @@ final class CheckInViewModel {
     private(set) var lastCheckIn: Date?
     private(set) var deadlineMinutes: Int
     private(set) var userID: String?
+    private(set) var contacts: [String]
     private let defaults = UserDefaults.standard
-    
+  
     init() {
         let store = UserDefaults.standard
         let saved = store.double(forKey: Keys.lastCheckIn)
         lastCheckIn = saved == 0 ? nil : Date(timeIntervalSince1970: saved)
         deadlineMinutes = store.object(forKey: Keys.deadlineMinutes) as? Int ?? 20 * 60
+        contacts = store.stringArray(forKey: Keys.contacts) ?? []
     }
     
     // MARK: - For the views
@@ -53,23 +55,46 @@ final class CheckInViewModel {
     func setUp() async {
         await NotificationManager.requestPermission()
         rescheduleReminders()
-
+        
         do {
             userID = try await AuthService.signInIfNeeded()
             print("Signed in with uid: \(userID ?? "none")")
+            await uploadContacts()
         } catch {
             print("Sign-in failed: \(error)")
         }
     }
-
+    
+    
+    // MARK: - Contacts
+    
+    func addContact(_ text: String) {
+        let email = text.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !email.isEmpty, !contacts.contains(email), contacts.count < 3 else { return }
+        
+        contacts.append(email)
+        saveContacts()
+    }
+    
+    func removeContacts(_ emails: [String]) {
+        contacts.removeAll { emails.contains($0) }
+        saveContacts()
+    }
+    
+    private func saveContacts() {
+        defaults.set(contacts, forKey: Keys.contacts)
+        Task { await uploadContacts() }
+    }
+    
+    
     // MARK: - Firestore
-
+    
     private func uploadCheckIn(at date: Date) async {
         guard let userID else {
             print("No user yet, check-in not uploaded")
             return
         }
-
+        
         do {
             try await FirestoreService.saveCheckIn(
                 userID: userID,
@@ -81,7 +106,18 @@ final class CheckInViewModel {
             print("Saving check-in failed: \(error)")
         }
     }
-
+    
+    private func uploadContacts() async {
+        guard let userID else { return }
+        
+        do {
+            try await FirestoreService.saveContacts(userID: userID, contacts: contacts)
+            print("Contacts saved to Firestore")
+        } catch {
+            print("Saving contacts failed: \(error)")
+        }
+    }
+    
     // A check-in covers today, so the next deadline is tomorrow.
     private func nextDeadline(after date: Date) -> Date {
         let calendar = Calendar.current
@@ -93,7 +129,8 @@ final class CheckInViewModel {
             of: tomorrow
         ) ?? tomorrow
     }
-
+    
+    
     // MARK: - Reminders
     
     private func rescheduleReminders() {
@@ -105,5 +142,6 @@ final class CheckInViewModel {
     private enum Keys {
         static let lastCheckIn = "lastCheckIn"
         static let deadlineMinutes = "deadlineMinutes"
+        static let contacts = "contacts"
     }
 }
