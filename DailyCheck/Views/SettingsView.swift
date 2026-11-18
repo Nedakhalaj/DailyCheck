@@ -9,14 +9,8 @@ import SwiftUI
 
 struct SettingsView: View {
     let viewModel: CheckInViewModel
-    @AppStorage("contactEmails") private var contactEmailsText: String = ""
+    
     @State private var newEmail = ""
-    
-    // "a@x.se\nb@y.se" -> ["a@x.se", "b@y.se"]
-    private var contacts: [String] {
-        contactEmailsText.split(separator: "\n").map(String.init)
-    }
-    
     // A simple check. It is not perfect, just enough to catch typos.
     private var isNewEmailValid: Bool {
         newEmail.contains("@") && newEmail.contains(".")
@@ -31,12 +25,15 @@ struct SettingsView: View {
             }
             
             Section {
-                ForEach(contacts, id: \.self) { email in
+                ForEach(viewModel.contacts, id: \.self) { email in
                     Text(email)
                 }
-                .onDelete(perform: deleteContacts)
+                .onDelete { offsets in
+                    let emails = offsets.map { viewModel.contacts[$0] }
+                    viewModel.removeContacts(emails)
+                }
                 
-                if contacts.count < 3 {
+                if viewModel.contacts.count < 3 {
                     HStack {
                         TextField("Email", text: $newEmail)
                             .keyboardType(.emailAddress)
@@ -44,11 +41,13 @@ struct SettingsView: View {
                             .autocorrectionDisabled()
                         
                         Button("Add") {
-                            addContact()
+                            viewModel.addContact(newEmail)
+                            newEmail = ""
                         }
                         .disabled(!isNewEmailValid)
                     }
                 }
+                
             } header: {
                 Text("Contacts")
             } footer: {
@@ -66,22 +65,6 @@ struct SettingsView: View {
             set: { viewModel.updateDeadline(from: $0) }
         )
     }
-    
-    private func addContact() {
-        let email = newEmail.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !contacts.contains(email) else { return }
-        
-        contactEmailsText = (contacts + [email]).joined(separator: "\n")
-        newEmail = ""
-    }
-    
-    private func deleteContacts(at offsets: IndexSet) {
-        var list = contacts
-        list.remove(atOffsets: offsets)
-        contactEmailsText = list.joined(separator: "\n")
-    }
-    
-    
 }
 
 #Preview {
