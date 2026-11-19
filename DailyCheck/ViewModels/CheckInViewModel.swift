@@ -46,12 +46,19 @@ final class CheckInViewModel {
         rescheduleReminders()
         Task { await uploadCheckIn(at: now) }
     }
+    
     func updateDeadline(from date: Date) {
         let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
         deadlineMinutes = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
         defaults.set(deadlineMinutes, forKey: Keys.deadlineMinutes)
         rescheduleReminders()
+        Task {
+            await uploadDeadlineMinutes()
+            await uploadNextDeadline()
+        }
+
     }
+    
     func setUp() async {
         await NotificationManager.requestPermission()
         rescheduleReminders()
@@ -60,6 +67,9 @@ final class CheckInViewModel {
             userID = try await AuthService.signInIfNeeded()
             print("Signed in with uid: \(userID ?? "none")")
             await syncContacts()
+            await syncLastCheckIn()
+            await syncDeadline()
+
         } catch {
             print("Sign-in failed: \(error)")
         }
@@ -94,12 +104,11 @@ final class CheckInViewModel {
             print("No user yet, check-in not uploaded")
             return
         }
-        
         do {
             try await FirestoreService.saveCheckIn(
                 userID: userID,
                 checkIn: date,
-                nextDeadline: nextDeadline(after: date)
+                nextDeadline: nextDeadline()
             )
             print("Check-in saved to Firestore")
         } catch {
@@ -135,18 +144,82 @@ final class CheckInViewModel {
         }
     }
     
-    // A check-in covers today, so the next deadline is tomorrow.
-    private func nextDeadline(after date: Date) -> Date {
+    // If she has not checked in today and today's deadline is still ahead: today.
+    // Otherwise: tomorrow.
+    private func nextDeadline() -> Date {
         let calendar = Calendar.current
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: date) ?? date
-        return calendar.date(
-            bySettingHour: deadlineMinutes / 60,
-            minute: deadlineMinutes % 60,
-            second: 0,
-            of: tomorrow
-        ) ?? tomorrow
+        let now = Date()
+        let todayDeadline = deadlineDate
+
+        var checkedInToday = false
+        if let lastCheckIn {
+            checkedInToday = calendar.isDateInToday(lastCheckIn)
+        }
+
+        if !checkedInToday && todayDeadline > now {
+            return todayDeadline
+        }
+        return calendar.date(byAdding: .day, value: 1, to: todayDeadline) ?? todayDeadline
     }
     
+    private func uploadNextDeadline() async {
+        guard let userID, lastCheckIn != nil else { return }
+
+        do {
+            try await FirestoreService.saveNextDeadline(userID: userID, nextDeadline: nextDeadline())
+            print("Next deadline saved to Firestore")
+        } catch {
+            print("Saving next deadline failed: \(error)")
+        }
+    }
+    
+    private func uploadDeadlineMinutes() async {
+        guard let userID else { return }
+
+        do {
+            try await FirestoreService.saveDeadlineMinutes(userID: userID, deadlineMinutes: deadlineMinutes)
+            print("Deadline setting saved to Firestore")
+        } catch {
+            print("Saving deadline setting failed: \(error)")
+        }
+    }
+
+    // New install: no deadline on the phone, so get it back from the server.
+    // Otherwise the phone is the newest copy, so send it up.
+    private func syncDeadline() async {
+        guard let userID else { return }
+
+        if defaults.object(forKey: Keys.deadlineMinutes) == nil {
+            do {
+                if let saved = try await FirestoreService.loadDeadlineMinutes(userID: userID) {
+                    deadlineMinutes = saved
+                    defaults.set(saved, forKey: Keys.deadlineMinutes)
+                    rescheduleReminders()
+                }
+            } catch {
+                print("Loading deadline setting failed: \(error)")
+            }
+        } else {
+            await uploadDeadlineMinutes()
+        }
+    }
+
+    // New install: no check-in on the phone, so get it back from the server.
+    private func syncLastCheckIn() async {
+        guard let userID, lastCheckIn == nil else { return }
+
+        do {
+            if let saved = try await FirestoreService.loadLastCheckIn(userID: userID) {
+                lastCheckIn = saved
+                defaults.set(saved.timeIntervalSince1970, forKey: Keys.lastCheckIn)
+                rescheduleReminders()
+            }
+        } catch {
+            print("Loading last check-in failed: \(error)")
+        }
+    }
+
+
     
     // MARK: - Reminders
     
