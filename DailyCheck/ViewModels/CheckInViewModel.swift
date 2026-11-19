@@ -14,7 +14,7 @@ final class CheckInViewModel {
     private(set) var userID: String?
     private(set) var contacts: [String]
     private let defaults = UserDefaults.standard
-  
+    
     init() {
         let store = UserDefaults.standard
         let saved = store.double(forKey: Keys.lastCheckIn)
@@ -59,7 +59,7 @@ final class CheckInViewModel {
         do {
             userID = try await AuthService.signInIfNeeded()
             print("Signed in with uid: \(userID ?? "none")")
-            await uploadContacts()
+            await syncContacts()
         } catch {
             print("Sign-in failed: \(error)")
         }
@@ -115,6 +115,23 @@ final class CheckInViewModel {
             print("Contacts saved to Firestore")
         } catch {
             print("Saving contacts failed: \(error)")
+        }
+    }
+    
+    // New install: the phone is empty, so get the contacts back from the server.
+    // Otherwise the phone is the newest copy, so send it up.
+    private func syncContacts() async {
+        guard let userID else { return }
+        
+        if contacts.isEmpty {
+            do {
+                contacts = try await FirestoreService.loadContacts(userID: userID)
+                defaults.set(contacts, forKey: Keys.contacts)
+            } catch {
+                print("Loading contacts failed: \(error)")
+            }
+        } else {
+            await uploadContacts()
         }
     }
     
