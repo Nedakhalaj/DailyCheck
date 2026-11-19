@@ -27,4 +27,13 @@ enum FirestoreService {
             .document(userID)
             .setData(["contacts": contacts], merge: true)
     }
+    
+    // Reads the contacts from users/{userID}. Empty list if none.
+    static func loadContacts(userID: String) async throws -> [String] {
+        let snapshot = try await Firestore.firestore()
+            .collection("users")
+            .document(userID)
+            .getDocument()
+        return snapshot.data()?["contacts"] as? [String] ?? []
+    }
 }
